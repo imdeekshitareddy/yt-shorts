@@ -1,0 +1,66 @@
+{
+ "duration": 42.47,
+ "estimated": true,
+ "lines": [
+  {
+   "i": 0,
+   "text": "What actually happens to your body when you stop sleeping?",
+   "start": 0.35,
+   "end": 3.921
+  },
+  {
+   "i": 1,
+   "text": "After just one night, your brain starts struggling to focus.",
+   "start": 4.181,
+   "end": 7.913
+  },
+  {
+   "i": 2,
+   "text": "It feels like your thoughts are wading through mud,",
+   "start": 8.173,
+   "end": 11.547
+  },
+  {
+   "i": 3,
+   "text": "because your brain hasn't had time to clear out the day's waste.",
+   "start": 11.807,
+   "end": 16.093
+  },
+  {
+   "i": 4,
+   "text": "By forty-eight hours, your body starts playing tricks on you,",
+   "start": 16.353,
+   "end": 20.244
+  },
+  {
+   "i": 5,
+   "text": "with tiny blackouts called microsleeps, where your brain just shuts off for seconds.",
+   "start": 20.504,
+   "end": 25.307
+  },
+  {
+   "i": 6,
+   "text": "You won't even know it's happening.",
+   "start": 25.567,
+   "end": 27.71
+  },
+  {
+   "i": 7,
+   "text": "Push past three days, and some people start seeing things that aren't there.",
+   "start": 27.97,
+   "end": 32.773
+  },
+  {
+   "i": 8,
+   "text": "But here's the thing, your body will always win.",
+   "start": 33.033,
+   "end": 36.407
+  },
+  {
+   "i": 9,
+   "text": "Eventually it just forces you to sleep, whether you like it or not.",
+   "start": 36.667,
+   "end": 41.47
+  }
+ ]
+}

@@ -1,0 +1,28 @@
+{
+  "title": "What Happens When You Don't Sleep?",
+  "voice": "broadcaster",
+  "speed": 0.97,
+  "lead": 0.35,
+  "outro": 1.0,
+  "gap": 0.26,
+  "music": "bed",
+  "sources": [
+    "NIH, 'Sleep deprivation and deficiency' (cognitive impairment begins after 24 hours; microsleeps, impaired judgment)",
+    "Harvard Medical School, 'Sleep and mental health' (emotional regulation impaired; amygdala hyperactivity after sleep loss)",
+    "Matthew Walker, 'Why We Sleep' (memory consolidation, immune function, metabolic effects of sleep deprivation)",
+    "Cleveland Clinic, 'What happens when you don't sleep' (hallucinations possible after 72+ hours; record is 11 days)"
+  ],
+  "lines": [
+    { "text": "What actually happens to your body when you stop sleeping?", "caps": "What *happens | when you *stop | *sleeping?" },
+    { "text": "After just one night, your brain starts struggling to focus.", "caps": "After *one night | your *brain | starts *struggling" },
+    { "text": "It feels like your thoughts are wading through mud,", "caps": "Your *thoughts | wading through *mud" },
+    { "text": "because your brain hasn't had time to clear out the day's waste.", "caps": "Your *brain | hasn't *cleared | the day's *waste" },
+    { "text": "By forty-eight hours, your body starts playing tricks on you,", "caps": "By *48 hours | your body | plays *tricks" },
+    { "text": "with tiny blackouts called microsleeps, where your brain just shuts off for seconds.", "caps": "Tiny *blackouts | called *microsleeps | brain shuts *off" },
+    { "text": "You won't even know it's happening.", "caps": "You *won't | even *know" },
+    { "text": "Push past three days, and some people start seeing things that aren't there.", "caps": "Past *three days | seeing *things | that aren't *there" },
+    { "text": "But here's the thing, your body will always win.", "caps": "But *here's | the *thing | your body | always *wins" },
+    { "text": "Eventually it just forces you to sleep, whether you like it or not.", "caps": "It *forces | you to *sleep | whether you | *like it | or *not" }
+  ]
+}
+

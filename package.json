@@ -1,0 +1,20 @@
+{
+  "name": "faceless-shorts-pipeline",
+  "version": "1.0.0",
+  "description": "Google Sheets integration & daily automated video production pipeline for Clay World faceless shorts",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test tests/**/*.test.js",
+    "claim": "node bin/run-narrative.js --claim",
+    "preview-next": "node bin/run-narrative.js --next",
+    "by-id": "node bin/run-narrative.js --id",
+    "publish": "node bin/publish.js",
+    "publish:yt": "node bin/publish.js --youtube-only",
+    "publish:status": "node bin/publish.js --status",
+    "auth:youtube": "node bin/auth-youtube.js"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  }
+}
