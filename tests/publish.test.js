@@ -3,7 +3,7 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { YouTubePublisher } from '../src/publish/youtube.js';
+import { YouTubePublisher, getScheduledPublishTime } from '../src/publish/youtube.js';
 import { InstagramPublisher } from '../src/publish/instagram.js';
 import { UnifiedPublisher } from '../src/publish/index.js';
 import { SheetsClient } from '../src/sheets_client.js';
@@ -362,5 +362,138 @@ describe('Publishing Layer Integration Tests', () => {
     assert.strictEqual(updated.Status, 'Published');
     assert.ok(updated['YouTube Caption'].includes('https://www.youtube.com/shorts/yt_live_123'));
     assert.ok(updated['Instagram Caption'].includes('https://www.instagram.com/reel/ig_live_456/'));
+  });
+
+  test('9. getScheduledPublishTime: computes correct RFC 3339 UTC time for 7:00 PM IST', () => {
+    // 11:00 AM IST on Nov 25, 2026 -> 05:30:00 UTC
+    const morningTime = new Date('2026-11-25T05:30:00.000Z');
+    const scheduledSameDay = getScheduledPublishTime(19, 0, morningTime);
+    // 7:00 PM IST is 13:30:00 UTC on the same day
+    assert.strictEqual(scheduledSameDay, '2026-11-25T13:30:00.000Z');
+
+    // 7:30 PM IST on Nov 25, 2026 -> 14:00:00 UTC (after target time)
+    const eveningTime = new Date('2026-11-25T14:00:00.000Z');
+    const scheduledNextDay = getScheduledPublishTime(19, 0, eveningTime);
+    // Should roll over to Nov 26, 2026 13:30:00 UTC
+    assert.strictEqual(scheduledNextDay, '2026-11-26T13:30:00.000Z');
+  });
+
+  test('10. YouTubePublisher: sets privacyStatus to private and includes publishAt when scheduling', async () => {
+    let capturedMetadata = null;
+    const mockUploadLocation = 'https://www.googleapis.com/upload/youtube/v3/videos?upload_id=mock_session_sched';
+
+    const mockFetch = async (url, opts = {}) => {
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ access_token: 'mock_token_sched' })
+        };
+      }
+      if (url.includes('uploadType=resumable')) {
+        capturedMetadata = JSON.parse(opts.body);
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({ location: mockUploadLocation }),
+          text: async () => ''
+        };
+      }
+      if (url === mockUploadLocation) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ id: 'mock_yt_sched_999' })
+        };
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    };
+
+    const yt = new YouTubePublisher({
+      clientId: 'mock_client',
+      clientSecret: 'mock_secret',
+      refreshToken: 'mock_refresh',
+      fetchFn: mockFetch
+    });
+
+    const targetIso = '2026-11-25T13:30:00.000Z';
+    const res = await yt.uploadShort({
+      videoPath: testVideoPath,
+      title: 'Scheduled Short Test',
+      description: 'Scheduled release test',
+      publishAt: targetIso
+    });
+
+    assert.strictEqual(res.success, true);
+    assert.strictEqual(res.videoId, 'mock_yt_sched_999');
+    assert.strictEqual(res.privacyStatus, 'scheduled');
+    assert.strictEqual(res.publishAt, targetIso);
+
+    // Verify YouTube Data API v3 requirements:
+    // When publishAt is set, privacyStatus MUST be 'private'
+    assert.strictEqual(capturedMetadata.status.privacyStatus, 'private');
+    assert.strictEqual(capturedMetadata.status.publishAt, targetIso);
+    assert.strictEqual(capturedMetadata.status.selfDeclaredMadeForKids, false);
+  });
+
+  test('11. UnifiedPublisher: defaults to 7:00 PM IST scheduling and annotates Google Sheet caption', async () => {
+    let receivedPublishAt = null;
+    const mockYouTube = {
+      isConfigured: () => true,
+      uploadShort: async ({ publishAt }) => {
+        receivedPublishAt = publishAt;
+        return {
+          success: true,
+          videoId: 'yt_sched_auto_1',
+          url: 'https://www.youtube.com/shorts/yt_sched_auto_1',
+          privacyStatus: 'scheduled',
+          publishAt
+        };
+      }
+    };
+
+    const mockState = createMockFetch({
+      narratives: [
+        {
+          ID: 'DREAM-SCHED-01',
+          Title: 'Scheduled Dream Story',
+          Narrative: 'Test narrative text',
+          'YouTube Caption': 'Scheduled YT caption',
+          'Instagram Caption': 'Scheduled IG caption',
+          Status: 'Ready for Review'
+        }
+      ]
+    });
+
+    const sheetsClient = new SheetsClient({
+      apiUrl: MOCK_API_URL,
+      token: MOCK_VALID_TOKEN,
+      fetchFn: mockState.mockFetch
+    });
+
+    const projDir = path.join(testDir, 'DREAM-SCHED-01');
+    fs.mkdirSync(path.join(projDir, 'renders'), { recursive: true });
+    fs.writeFileSync(path.join(projDir, 'renders/DREAM-SCHED-01.mp4'), 'dummy-video-data');
+    fs.writeFileSync(path.join(projDir, 'metadata.json'), JSON.stringify({
+      id: 'DREAM-SCHED-01',
+      title: 'Scheduled Dream Story',
+      youtubeCaption: 'Scheduled YT caption',
+      instagramCaption: 'Scheduled IG caption'
+    }));
+
+    const publisher = new UnifiedPublisher({
+      projectsRoot: testDir,
+      youtube: mockYouTube,
+      sheetsClient
+    });
+
+    const res = await publisher.publishNarrative('DREAM-SCHED-01', { skipInstagram: true });
+    assert.strictEqual(res.id, 'DREAM-SCHED-01');
+    assert.ok(receivedPublishAt !== null);
+    assert.strictEqual(res.youtube.privacyStatus, 'scheduled');
+
+    const updated = await sheetsClient.getById('DREAM-SCHED-01');
+    assert.strictEqual(updated.Status, 'Published');
+    assert.ok(updated['YouTube Caption'].includes('Scheduled for 7:00 PM IST'));
   });
 });

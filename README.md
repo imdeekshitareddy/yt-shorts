@@ -101,7 +101,7 @@ faceless-shorts-skill/
    ```bash
    npm test
    ```
-   Ensures all 31 unit and integration tests pass with 100% coverage.
+   Ensures all 34 unit and integration tests pass with 100% coverage.
 
 ---
 
@@ -133,12 +133,15 @@ node bin/run-narrative.js --verify DREAM-005
 node bin/run-narrative.js --verify
 ```
 
-### 5. Publish to YouTube Shorts
-Uploads the Short via resumable upload, verifies metadata, and sets Google Sheet status to `Published`:
+### 5. Publish to YouTube Shorts (Scheduled at 7:00 PM IST)
+Uploads the Short via resumable upload, schedules it for release at 7:00 PM IST today, and sets Google Sheet status to `Published`:
 ```bash
 node bin/run-narrative.js --publish-yt DREAM-005
-# Or auto-detect and publish the most recent render:
+# Or auto-detect and schedule the most recent render:
 node bin/run-narrative.js --publish-yt
+
+# To release immediately public (bypass scheduling):
+node bin/run-narrative.js --publish-yt --immediate
 ```
 
 ---
@@ -157,13 +160,14 @@ The pipeline includes built-in procedural sets ready to dress any scene:
 
 ## Unattended Daily Automation
 
-For hands-free operation, this repository is pre-configured to run as an **Antigravity Sidecar Automation** every morning at **10:30 AM IST**:
+For hands-free operation, this repository is pre-configured to run as an **Antigravity Sidecar Automation** every morning at **11:00 AM IST**:
 
 1. Claims the next pending narrative from Google Sheets.
 2. Generates the Broadcaster voice and Whisper timings.
 3. Choreographs custom 3D clay scenes with dynamic camera tracking and comic accents.
 4. Renders the contact sheet and high-definition vertical MP4.
-5. Uploads directly to YouTube Shorts and writes back the live URL.
+5. Uploads directly to YouTube Shorts and schedules it for prime-time release at **7:00 PM IST** on the same day.
+6. Synchronizes the scheduled Short link and `Published` status back to Google Sheets.
 
 ---
 

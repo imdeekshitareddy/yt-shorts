@@ -2,7 +2,7 @@
 // Coordinates automated uploads to YouTube Shorts & Instagram Reels and updates Google Sheets.
 import fs from 'node:fs';
 import path from 'node:path';
-import { YouTubePublisher } from './youtube.js';
+import { YouTubePublisher, getScheduledPublishTime } from './youtube.js';
 import { InstagramPublisher } from './instagram.js';
 import { SheetsClient, STATUS_ENUM } from '../sheets_client.js';
 import { readProjectMetadata, updateProjectMetadata } from '../script_prep.js';
@@ -22,7 +22,9 @@ export class UnifiedPublisher {
     const {
       skipYouTube = false,
       skipInstagram = false,
-      dryRun = false
+      dryRun = false,
+      publishAt: customPublishAt = null,
+      scheduleTime = process.env.YOUTUBE_SCHEDULE_TIME || '19:00'
     } = options;
 
     const projectDir = path.join(this.projectsRoot, narrativeId);
@@ -44,6 +46,15 @@ export class UnifiedPublisher {
     const ytCaption = metadata.youtubeCaption || title;
     const igCaption = metadata.instagramCaption || title;
 
+    // Determine scheduled publish timestamp (default: 7:00 PM IST today)
+    let publishAt = customPublishAt;
+    if (!publishAt && scheduleTime && scheduleTime !== 'none' && scheduleTime !== 'immediate') {
+      const parts = String(scheduleTime).split(':');
+      const h = parseInt(parts[0], 10) || 19;
+      const m = parseInt(parts[1], 10) || 0;
+      publishAt = getScheduledPublishTime(h, m);
+    }
+
     const results = {
       id: narrativeId,
       youtube: null,
@@ -56,7 +67,9 @@ export class UnifiedPublisher {
       results.youtube = {
         success: true,
         platform: 'YouTube (Dry-Run)',
-        url: `https://www.youtube.com/shorts/mock_${narrativeId}`
+        url: `https://www.youtube.com/shorts/mock_${narrativeId}`,
+        privacyStatus: publishAt ? 'scheduled' : 'public',
+        publishAt: publishAt || null
       };
       results.instagram = {
         success: true,
@@ -70,14 +83,16 @@ export class UnifiedPublisher {
     // ── 1. Upload to YouTube Shorts ──
     if (!skipYouTube && this.youtube.isConfigured()) {
       try {
-        this.logger.log(`Uploading ${narrativeId} to YouTube Shorts...`);
+        const scheduleLog = publishAt ? ` (scheduled for ${publishAt} / 7:00 PM IST)` : ' (immediate public)';
+        this.logger.log(`Uploading ${narrativeId} to YouTube Shorts${scheduleLog}...`);
         const ytRes = await this.youtube.uploadShort({
           videoPath,
           title,
-          description: ytCaption
+          description: ytCaption,
+          publishAt
         });
         results.youtube = ytRes;
-        this.logger.log(`YouTube upload successful: ${ytRes.url}`);
+        this.logger.log(`YouTube upload successful: ${ytRes.url}${ytRes.publishAt ? ` (Scheduled: ${ytRes.publishAt})` : ''}`);
       } catch (err) {
         this.logger.error(`YouTube upload failed for ${narrativeId}: ${err.message}`);
         results.errors.push(`YouTube: ${err.message}`);
@@ -113,6 +128,7 @@ export class UnifiedPublisher {
       youtubeUrl: ytUrl,
       instagramUrl: igUrl,
       publishedAt: new Date().toISOString(),
+      youtubePublishAt: results.youtube?.publishAt || null,
       status: STATUS_ENUM.PUBLISHED
     });
 
@@ -124,7 +140,8 @@ export class UnifiedPublisher {
         };
 
         if (ytUrl) {
-          updatePayload['YouTube Caption'] = `${ytCaption}\n\nLive: ${ytUrl}`;
+          const scheduleNotice = results.youtube?.publishAt ? ' (Scheduled for 7:00 PM IST)' : '';
+          updatePayload['YouTube Caption'] = `${ytCaption}\n\nLive: ${ytUrl}${scheduleNotice}`;
         }
         if (igUrl) {
           updatePayload['Instagram Caption'] = `${igCaption}\n\nLive: ${igUrl}`;

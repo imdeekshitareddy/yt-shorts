@@ -4,6 +4,35 @@ import { loadEnv } from '../config.js';
 
 loadEnv();
 
+/**
+ * Calculates ISO 8601 UTC publish timestamp for a target time in Indian Standard Time (IST, UTC+05:30).
+ * If target time has already passed today (or is less than 10 mins away), rolls over to tomorrow.
+ *
+ * @param {number} targetHourIST - Target hour in IST (0-23, default: 19 = 7:00 PM)
+ * @param {number} targetMinuteIST - Target minute in IST (0-59, default: 0)
+ * @param {Date} now - Optional current date for testing
+ * @returns {string} - ISO 8601 UTC string (e.g. "2026-11-25T13:30:00.000Z")
+ */
+export function getScheduledPublishTime(targetHourIST = 19, targetMinuteIST = 0, now = new Date()) {
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(now.getTime() + IST_OFFSET_MS);
+
+  const year = istDate.getUTCFullYear();
+  const month = istDate.getUTCMonth();
+  const date = istDate.getUTCDate();
+
+  // Target time in UTC = Target time in IST minus 5.5 hours
+  const targetUtcMs = Date.UTC(year, month, date, targetHourIST, targetMinuteIST, 0, 0) - IST_OFFSET_MS;
+  let targetDate = new Date(targetUtcMs);
+
+  // If target time is within 10 minutes from now or in the past, schedule for tomorrow
+  if (targetDate.getTime() - now.getTime() < 10 * 60 * 1000) {
+    targetDate = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  return targetDate.toISOString();
+}
+
 export class YouTubePublisher {
   constructor(options = {}) {
     this.clientId = options.clientId !== undefined ? options.clientId : process.env.YOUTUBE_CLIENT_ID;
@@ -56,7 +85,8 @@ export class YouTubePublisher {
     title = 'Untitled Short',
     description = '',
     tags = ['shorts', 'clayworld', 'animation'],
-    privacyStatus = 'public'
+    privacyStatus = 'public',
+    publishAt = null
   }) {
     if (!fs.existsSync(videoPath)) {
       throw new Error(`Video file does not exist at: ${videoPath}`);
@@ -75,6 +105,9 @@ export class YouTubePublisher {
     const formattedTitle = /#shorts/i.test(title) ? title : `${title} #shorts`;
     const formattedDesc = /#shorts/i.test(description) ? description : `${description}\n\n#shorts`;
 
+    // YouTube Data API v3 rule: When scheduling (publishAt set), privacyStatus MUST be 'private'
+    const effectivePrivacy = publishAt ? 'private' : privacyStatus;
+
     const metadata = {
       snippet: {
         title: formattedTitle.slice(0, 100), // YouTube title max 100 chars
@@ -83,10 +116,14 @@ export class YouTubePublisher {
         categoryId: '22' // People & Blogs
       },
       status: {
-        privacyStatus,
+        privacyStatus: effectivePrivacy,
         selfDeclaredMadeForKids: false
       }
     };
+
+    if (publishAt) {
+      metadata.status.publishAt = publishAt;
+    }
 
     // 1. Initiate Resumable Upload Session
     const initRes = await this.fetchFn(this.uploadEndpoint, {
@@ -140,7 +177,8 @@ export class YouTubePublisher {
       platform: 'YouTube',
       videoId,
       url: shortUrl,
-      privacyStatus,
+      privacyStatus: publishAt ? 'scheduled' : privacyStatus,
+      publishAt: publishAt || null,
       uploadedAt: new Date().toISOString()
     };
   }

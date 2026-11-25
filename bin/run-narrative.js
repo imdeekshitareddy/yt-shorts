@@ -21,7 +21,8 @@ Options:
   --id <ID>           Scaffold or inspect a specific narrative by its ID
   --verify <ID>       Check if all required generation and render artifacts exist on disk
   --ready <ID>        Verify final video and QA sheet, then update Google Sheet status to Ready for Review
-  --publish-yt <ID>   Verify and publish short directly to YouTube Shorts, updating Google Sheet
+  --publish-yt [ID]   Upload short to YouTube Shorts (defaults to scheduled release at 7:00 PM IST)
+  --immediate         When used with --publish-yt, releases publicly immediately without scheduling
   --status <ID> <ST>  Update status of a narrative (Pending|Processing|Ready for Review|Approved|Published|Failed)
   --config            Display current environment configuration status (tokens masked)
   --help              Display this help message
@@ -116,10 +117,15 @@ async function main() {
       console.error(`Cannot publish ${id}. Missing artifacts: ${verification.missing.join(', ')}`);
       process.exit(1);
     }
+    const immediate = args.includes('--immediate') || args.includes('--now');
+    const scheduleTime = immediate ? 'none' : (process.env.YOUTUBE_SCHEDULE_TIME || '19:00');
     const publisher = new UnifiedPublisher();
-    const result = await publisher.publishNarrative(id, { skipInstagram: true });
+    const result = await publisher.publishNarrative(id, { skipInstagram: true, scheduleTime });
     if (result.youtube?.success) {
-      console.log(`\n=== PUBLISH SUCCESS ===\nShort ID:  ${id}\nYouTube:   ${result.youtube.url}\nStatus:    Published on Google Sheet\n`);
+      const scheduleInfo = result.youtube.publishAt
+        ? ` (Scheduled for 7:00 PM IST - ${result.youtube.publishAt})`
+        : ' (Immediate Public)';
+      console.log(`\n=== PUBLISH SUCCESS ===\nShort ID:  ${id}\nYouTube:   ${result.youtube.url}${scheduleInfo}\nStatus:    Published on Google Sheet\n`);
     } else {
       console.error(`Failed to publish ${id} to YouTube Shorts: ${result.errors.join('; ')}`);
       process.exit(1);
